@@ -23,16 +23,16 @@ Ne pas contenir d'espaces ou de caractères spéciaux (ex. : utilisez _ pour sé
 Nombre maximal de facteurs :
 Deux facteurs maximum, quel que soit le dispositif expérimental (DCA, DBAC ou Split-Plot).
 Pour DBAC et Split-Plot, un bloc est ajouté.  
-Tests appliqués :
+Tests appliqués :  
 Si un seul facteur avec deux modalités est sélectionné : un T-Test est appliqué.
 Sinon :
 ANOVA à un facteur (pour un seul facteur avec plusieurs modalités).
 ANOVA à deux facteurs (pour deux facteurs).  
-3. Vérification des interactions :
+3. Vérification des interactions :  
 L'analyse commence par vérifier l'interaction entre les facteurs (si deux facteurs sont choisis).
 Si l'interaction est significative : pas besoin d'analyser les effets individuels des facteurs.
 Si l'interaction est non significative : les effets individuels sont analysés séparément.  
-4. Considérations spécifiques :
+4. Considérations spécifiques :  
 Split-Plot :
 Le premier facteur sélectionné est considéré comme primaire.
 Le deuxième facteur sélectionné est considéré comme secondaire.
