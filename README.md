@@ -6,7 +6,7 @@ First, ensure you have Python 3.x or above installed.
 
 Run the following commands to install the required libraries:
 
-pip install streamlit ;  
+pip install streamlit ;   
 pip install pandas ;  
 pip install statsmodels ;  
 pip install matplotlib ;  
