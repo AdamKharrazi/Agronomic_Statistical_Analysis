@@ -1,7 +1,6 @@
 AUTHOR = "KHARRAZI ADAM"
 EMAIL = "adamkharrazi401@gmail.com"
 
-
 import streamlit as st
 import pandas as pd
 import statsmodels.api as sm
@@ -10,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 
-st.title("Analyse Statistique pour les Expérimentations Agronomiques : ANOVA et Test de Student")
+st.title("Analyse Statistique pour les Expérimentations Agronomiques 1.0")
 
 def charger_fichier():
     fichier = st.file_uploader("Chargez un fichier Excel", type=["xlsx", "xls"])
@@ -53,107 +52,82 @@ if data is not None:
             st.subheader(f"Analyse des données pour la variable : {variable}")
 
             try:
-                if len(facteurs) == 1:
-                    facteur = facteurs[0]
-                    modalites = data[facteur].nunique()
+                # Cas DCA 
+                if dispositif == "DCA":
+                    if len(facteurs) == 1:
+                        facteur = facteurs[0]
+                        modalites = data[facteur].nunique()
 
-                    if modalites == 2:
-                        st.write("Deux modalités pour ce facteur, un test t de Student sera effectué.")
-                        groupe1 = data[data[facteur] == data[facteur].unique()[0]][variable]
-                        groupe2 = data[data[facteur] == data[facteur].unique()[1]][variable]
-                        t_stat, p_val = stats.ttest_ind(groupe1, groupe2)
+                        # Si 2 modalités, faire un test t de Student
+                        if modalites == 2:
+                            st.write("Deux modalités pour ce facteur en DCA, un test t de Student sera effectué.")
+                            groupe1 = data[data[facteur] == data[facteur].unique()[0]][variable]
+                            groupe2 = data[data[facteur] == data[facteur].unique()[1]][variable]
+                            t_stat, p_val = stats.ttest_ind(groupe1, groupe2)
 
-                        st.write(f"t-statistique: {t_stat}")
-                        st.write(f"p-value: {p_val}")
-                        if p_val < 0.05:
-                            st.success("Les moyennes des deux groupes sont significativement différentes.")
+                            st.write(f"t-statistique: {t_stat}")
+                            st.write(f"p-value: {p_val}")
+                            if p_val < 0.05:
+                                st.success("Les moyennes des deux groupes sont significativement différentes.")
+                            else:
+                                st.warning("Les moyennes des deux groupes ne sont pas significativement différentes.")
                         else:
-                            st.warning("Les moyennes des deux groupes ne sont pas significativement différentes.")
+                            # Sinon, faire ANOVA 1
+                            st.write(f"Plus de 2 modalités pour {facteur}, une ANOVA 1 sera effectuée.")
+                            facteurs_formule = f"C({facteur})"
+                            formule = f"{variable} ~ {facteurs_formule}"
 
-                        st.write("### Visualisation graphique")
-                        grouped = data.groupby(facteur)[variable].agg(["mean", "std"]).reset_index()
+                            model = ols(formule, data=data).fit()
+                            anova_table = sm.stats.anova_lm(model, typ=3)
 
-                        fig, ax = plt.subplots(figsize=(8, 6))
-                        sns.barplot(
-                            x=facteur,
-                            y="mean",
-                            data=grouped,
-                            ci=None,
-                            palette="muted"
-                        )
-
-                        for i, row in grouped.iterrows():
-                            ax.errorbar(
-                                x=i,
-                                y=row["mean"],
-                                yerr=row["std"],
-                                fmt='none',
-                                ecolor='black',
-                                capsize=5
-                            )
-
-                        ax.set_title(f"Moyenne et écart-type ({facteur})")
-                        ax.set_ylabel(variable)
-                        ax.set_xlabel(facteur)
-                        st.pyplot(fig)
-
-                    else:
-                        st.write(f"Plus de 2 modalités pour {facteur}, une ANOVA sera effectuée.")
-                        facteurs_formule = f"C({facteur})"
-                        formule = f"{variable} ~ {facteurs_formule}"
-
+                            st.write("### Tableau ANOVA complet")
+                            st.write(anova_table)
+                            if anova_table.loc[f"C({facteur})", 'PR(>F)'] < 0.05:
+                                st.success(f"L'effet du facteur {facteur} est significatif (p < 0.05).")
+                            else:
+                                st.warning(f"L'effet du facteur {facteur} n'est pas significatif.")
+                    
+                    # Cas avec 2 facteurs pour DCA
+                    elif len(facteurs) == 2:
+                        st.write("Deux facteurs sélectionnés, une ANOVA 2 sera effectuée.")
+                        
+                        formule = f"{variable} ~ C({facteurs[0]}) + C({facteurs[1]}) + C({facteurs[0]}):C({facteurs[1]})"
                         model = ols(formule, data=data).fit()
                         anova_table = sm.stats.anova_lm(model, typ=3)
 
                         st.write("### Tableau ANOVA complet")
                         st.write(anova_table)
-                        if anova_table.loc[f"C({facteur})", 'PR(>F)'] < 0.05:
-                                st.success(f"L'effet du facteur {facteur} est significatif (p < 0.05).")
+
+                        interaction_formule = f"C({facteurs[0]}):C({facteurs[1]})"
+                        if interaction_formule in anova_table.index and anova_table.loc[interaction_formule, 'PR(>F)'] < 0.05:
+                            st.success(f"L'effet d'interaction entre {facteurs[0]} et {facteurs[1]} est significatif (p < 0.05).")
                         else:
-                                st.warning(f"L'effet du facteur {facteur} n'est pas significatif.")
-                        st.write("### Visualisation graphique")
-                        grouped = data.groupby(facteur)[variable].agg(["mean", "std"]).reset_index()
+                            st.info(f"L'effet d'interaction n'est pas significatif. Analyse des facteurs individuels :")
+                            for facteur in facteurs:
+                                if anova_table.loc[f"C({facteur})", 'PR(>F)'] < 0.05:
+                                    st.success(f"L'effet du facteur {facteur} est significatif (p < 0.05).")
+                                else:
+                                    st.warning(f"L'effet du facteur {facteur} n'est pas significatif.")
 
-                        fig, ax = plt.subplots(figsize=(8, 6))
-                        sns.barplot(
-                            x=facteur,
-                            y="mean",
-                            data=grouped,
-                            ci=None,
-                            palette="muted"
-                        )
-
-                        for i, row in grouped.iterrows():
-                            ax.errorbar(
-                                x=i,
-                                y=row["mean"],
-                                yerr=row["std"],
-                                fmt='none',
-                                ecolor='black',
-                                capsize=5
-                            )
-
-                        ax.set_title(f"Moyenne et écart-type ({facteur})")
-                        ax.set_ylabel(variable)
-                        ax.set_xlabel(facteur)
-                        st.pyplot(fig)
-
-                elif len(facteurs) == 2:
-                    st.write("Deux facteurs sélectionnés, une ANOVA avec interaction sera effectuée.")
-                    facteur1, facteur2 = facteurs
-                    interaction_formule = ":".join([f"C({facteur})" for facteur in facteurs])
-                    facteurs_formule = " + ".join([f"C({facteur})" for facteur in facteurs])
-
-                    formule = f"{variable} ~ {facteurs_formule} + {interaction_formule}"
-
+                        
+                # Cas DBAC 
+                elif dispositif == "DBAC":
+                    if len(facteurs)==1:
+                        st.write("Un facteur sélectionné, une ANOVA 1 sera effectuée.")
+                        formule = f"{variable} ~ C({facteurs[0]}) + C({facteur_bloc})"
+                    elif len(facteurs) == 2:
+                        st.write("Deux facteurs sélectionnés, une ANOVA 2 sera effectuée.")
+                        formule = f"{variable} ~ C({facteurs[0]}) + C({facteurs[1]}) + C({facteur_bloc}) + C({facteurs[0]}):C({facteurs[1]})"
+                
                     model = ols(formule, data=data).fit()
                     anova_table = sm.stats.anova_lm(model, typ=3)
 
                     st.write("### Tableau ANOVA complet")
                     st.write(anova_table)
 
+                    interaction_formule = f"C({facteurs[0]}):C({facteurs[1]})"
                     if interaction_formule in anova_table.index and anova_table.loc[interaction_formule, 'PR(>F)'] < 0.05:
-                        st.success(f"L'effet d'interaction entre {facteur1} et {facteur2} est significatif (p < 0.05).")
+                        st.success(f"L'effet d'interaction entre {facteurs[0]} et {facteurs[1]} est significatif (p < 0.05).")
                     else:
                         st.info(f"L'effet d'interaction n'est pas significatif. Analyse des facteurs individuels :")
                         for facteur in facteurs:
@@ -162,35 +136,79 @@ if data is not None:
                             else:
                                 st.warning(f"L'effet du facteur {facteur} n'est pas significatif.")
 
+                # Cas Split Plot 
+                elif dispositif == "Split Plot" and len(facteurs)==2 :
+                    st.write("Deux facteurs sélectionnés, une ANOVA 2 sera effectuée.")
+                    formule = f"{variable} ~ C({facteurs[0]}) + C({facteurs[1]}) + C({facteur_bloc}) + C({facteurs[0]}):C({facteur_bloc}) + C({facteurs[0]}):C({facteurs[1]})"
+                
+                    model = ols(formule, data=data).fit()
+                    anova_table = sm.stats.anova_lm(model, typ=3)
+
+                    st.write("### Tableau ANOVA complet")
+                    st.write(anova_table)
+                    interaction_formule = f"C({facteurs[0]}):C({facteurs[1]})"
+                    if interaction_formule in anova_table.index and anova_table.loc[interaction_formule, 'PR(>F)'] < 0.05:
+                        st.success(f"L'effet d'interaction entre {facteurs[0]} et {facteurs[1]} est significatif (p < 0.05).")
+                    else:
+                        st.info(f"L'effet d'interaction n'est pas significatif. Analyse des facteurs individuels :")
+                        for facteur in facteurs:
+                            if anova_table.loc[f"C({facteur})", 'PR(>F)'] < 0.05:
+                                st.success(f"L'effet du facteur {facteur} est significatif (p < 0.05).")
+                            else:
+                                st.warning(f"L'effet du facteur {facteur} n'est pas significatif.")
+
+                 #Visualisation
+                if len(facteurs)==1 :
+                        st.write("### Visualisation graphique")
+                        grouped = data.groupby(facteurs[0])[variable].agg(["mean", "std"]).reset_index()
+                        fig, ax = plt.subplots(figsize=(8, 6))
+                        sns.barplot(
+                            x=facteurs[0],
+                            y="mean",
+                            data=grouped,
+                            ci=None,
+                            palette="muted"
+                        )
+                        for i, row in grouped.iterrows():
+                            ax.errorbar(
+                                x=i,
+                                y=row["mean"],
+                                yerr=row["std"],
+                                fmt='none',
+                                ecolor='black',
+                                capsize=5
+                            )
+                        ax.set_title(f"Moyenne et écart-type ({facteur})")
+                        ax.set_ylabel(variable)
+                        ax.set_xlabel(facteur)
+                        st.pyplot(fig)
+
+                elif len(facteurs)==2 :
                     st.write("### Visualisation graphique")
-                    data["Combinaison"] = data[facteur1].astype(str) + " - " + data[facteur2].astype(str)
-
+                    data["Combinaison"] = data[facteurs[0]].astype(str) + " - " + data[facteurs[1]].astype(str)
                     grouped = data.groupby("Combinaison")[variable].agg(["mean", "std"]).reset_index()
-
                     fig, ax = plt.subplots(figsize=(10, 6))
                     sns.barplot(
-                        x="Combinaison",
-                        y="mean",
-                        data=grouped,
-                        ci=None,
-                        palette="muted"
-                    )
-
-                    for i, row in grouped.iterrows():
-                        ax.errorbar(
-                            x=i,
-                            y=row["mean"],
-                            yerr=row["std"],
-                            fmt='none',
-                            ecolor='black',
-                            capsize=5
+                            x="Combinaison",
+                            y="mean",
+                            data=grouped,
+                            ci=None,
+                            palette="muted"
                         )
-
-                    ax.set_title(f"Moyenne et écart-type combinés ({facteur1} et {facteur2})")
+                    for i, row in grouped.iterrows():
+                            ax.errorbar(
+                                x=i,
+                                y=row["mean"],
+                                yerr=row["std"],
+                                fmt='none',
+                                ecolor='black',
+                                capsize=5
+                            )
+                    ax.set_title(f"Moyenne et écart-type combinés ({facteurs[0]} et {facteurs[1]})")
                     ax.set_ylabel(variable)
                     ax.set_xlabel("Combinaisons des modalités")
                     ax.set_xticklabels(grouped["Combinaison"], rotation=45, ha="right")
                     st.pyplot(fig)
 
             except Exception as e:
-                st.error(f"Erreur lors de l'analyse : {e}")
+                st.error(f"Une erreur est survenue : {e}")
