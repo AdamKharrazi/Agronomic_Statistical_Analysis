@@ -55,14 +55,13 @@ if data is not None:
                 # Cas DCA 
                 if dispositif == "DCA":
                     if len(facteurs) == 1:
-                        facteur = facteurs[0]
-                        modalites = data[facteur].nunique()
+                        modalites = data[facteurs[0]].nunique()
 
                         # Si 2 modalités, faire un test t de Student
                         if modalites == 2:
                             st.write("Deux modalités pour ce facteur en DCA, un test t de Student sera effectué.")
-                            groupe1 = data[data[facteur] == data[facteur].unique()[0]][variable]
-                            groupe2 = data[data[facteur] == data[facteur].unique()[1]][variable]
+                            groupe1 = data[data[facteurs[0]] == data[facteurs[0]].unique()[0]][variable]
+                            groupe2 = data[data[facteurs[0]] == data[facteurs[0]].unique()[1]][variable]
                             t_stat, p_val = stats.ttest_ind(groupe1, groupe2)
 
                             st.write(f"t-statistique: {t_stat}")
@@ -73,19 +72,18 @@ if data is not None:
                                 st.warning("Les moyennes des deux groupes ne sont pas significativement différentes.")
                         else:
                             # Sinon, faire ANOVA 1
-                            st.write(f"Plus de 2 modalités pour {facteur}, une ANOVA 1 sera effectuée.")
-                            facteurs_formule = f"C({facteur})"
-                            formule = f"{variable} ~ {facteurs_formule}"
+                            st.write(f"Plus de 2 modalités pour {facteurs[0]}, une ANOVA 1 sera effectuée.")
+                            formule = f"{variable} ~ C({facteurs[0]})"
 
                             model = ols(formule, data=data).fit()
                             anova_table = sm.stats.anova_lm(model, typ=3)
 
                             st.write("### Tableau ANOVA complet")
                             st.write(anova_table)
-                            if anova_table.loc[f"C({facteur})", 'PR(>F)'] < 0.05:
-                                st.success(f"L'effet du facteur {facteur} est significatif (p < 0.05).")
+                            if anova_table.loc[f"C({facteurs[0]})", 'PR(>F)'] < 0.05:
+                                st.success(f"L'effet du facteur {facteurs[0]} est significatif (p < 0.05).")
                             else:
-                                st.warning(f"L'effet du facteur {facteur} n'est pas significatif.")
+                                st.warning(f"L'effet du facteur {facteurs[0]} n'est pas significatif.")
                     
                     # Cas avec 2 facteurs pour DCA
                     elif len(facteurs) == 2:
@@ -178,9 +176,9 @@ if data is not None:
                                 ecolor='black',
                                 capsize=5
                             )
-                        ax.set_title(f"Moyenne et écart-type ({facteur})")
+                        ax.set_title(f"Moyenne et écart-type ({facteurs[0]})")
                         ax.set_ylabel(variable)
-                        ax.set_xlabel(facteur)
+                        ax.set_xlabel(facteurs[0])
                         st.pyplot(fig)
 
                 elif len(facteurs)==2 :
